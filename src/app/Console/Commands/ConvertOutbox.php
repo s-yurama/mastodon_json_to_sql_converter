@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class dump extends Command
 {
@@ -37,6 +38,18 @@ class dump extends Command
      */
     public function handle()
     {
+        $fileJson = Storage::get('outbox.json');
+        
+        $jsonObject = json_decode($fileJson, true);
+        
+        $body = '';
+        foreach( $jsonObject->orderedItems as $item) {
+            $body.= $item->id;
+            $body.= "\n";
+        }
+        
+        Storage::put('insert_status.sql', $body);
+        
         return 0;
     }
 }
