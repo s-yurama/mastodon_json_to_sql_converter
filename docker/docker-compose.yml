@@ -1,0 +1,47 @@
+version: "3"
+
+networks:
+    backend:
+        driver: bridge
+
+volumes:
+    mysql-database:
+        driver: local
+    mailcatcher-data:
+        driver: local
+
+    # ignore folder volumes
+    var:
+        driver: local
+    vendor:
+        driver: local
+
+services:
+    # Web server
+    www_laravel:
+        build:
+            context: .
+        volumes:
+            # excluded from sync
+            #- '/var/www/src/storage/logs'
+            - '/var/www/src/storage/framework'
+            # sync
+            - ../src:/var/www/src:cached
+        networks:
+            - backend
+
+    # Databases
+    mysql:
+        platform: linux/x86_64
+        image: mariadb:10
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: test_local
+            MYSQL_USER: test_local
+            MYSQL_PASSWORD: password
+        volumes:
+            - ./database/mysql:/var/lib/mysql:delegated
+        ports:
+            - 3306:3306
+        networks:
+            - backend
