@@ -11,14 +11,14 @@ class dump extends Command
      *
      * @var string
      */
-    protected $signature = 'db:dump';
+    protected $signature = 'convert:outbox';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'dump database';
+    protected $description = 'convert outbox.json to insert.sql';
 
     /**
      * Create a new command instance.
