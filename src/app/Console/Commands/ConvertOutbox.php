@@ -47,6 +47,19 @@ class ConvertOutbox extends Command
 
         $jsonObject = json_decode($fileJson, false);
 
+        $this->buildSqlInsertStatus($jsonObject->orderedItems);
+        $this->buildSqlInsertMediaAttachments();
+        $this->buildSqlInsertStatusTags();
+        $this->buildSqlInsertTags();
+        
+        return 0;
+    }
+    
+    /**
+     * build insert SQL for statuses table
+     * @param type $items
+     */
+    private function buildSqlInsertStatus($items) {
         $body = '';
                 
         $columnNames = [
@@ -76,7 +89,7 @@ class ConvertOutbox extends Command
         $account_id = 'reserved_account_id_here';
         $conversation_id = 0;
         
-        foreach( $jsonObject->orderedItems as $item) {
+        foreach( $items as $item) {
             $body .= 'INSERT INTO statuses';
             $body .= "\n";
             
@@ -84,24 +97,41 @@ class ConvertOutbox extends Command
             $body.= $columns;   
             $body .= "\n";
             
-            $uri = $item->id;
-            $timestamp = basename($item->object->id); // as ID column in posgresql db side
-            $text = str_replace('<p>', '', $item->object->content);
+            $uri = $item->object->id;
+            $id = basename($item->object->id); // as ID column in posgresql db side
+            $text = html_entity_decode($item->object->content);
+            $text = str_replace('&apos;', '\'', $text);
+            $text = str_replace('<p>', '', $text);
             $text = str_replace('</p>', "\n", $text);
             $text = str_replace('<br />', "\n", $text);
+            
+            // URL part recovery
+            //$text = preg_replace("/(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)/u", '', $text);
+            $text = str_replace('<a href="', ' ', $text);
+            $text = str_replace('" rel="nofollow noopener" target="_blank">', '', $text);
+            $text = preg_replace('/<span class="invisible">https:\/\/<\/span><span class="">[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+<\/span><span class="invisible"><\/span><\/a>/u', ' ', $text);
+
+            // end of </p> will be converted to \n, then remove it.
             $text = preg_replace("/\n$/u", '', $text);
-            $created_at = $timestamp;
-            $updated_at = $timestamp;
+            $text = preg_replace("/\s$/u", '', $text);
+
+            $text = str_replace('\'', '\'\'', $text);
+            
+            // escape for text
+            //$text = pg_escape_string(null, $text);
+            
+            $created_at = date('Y/m/d H:i:s.v', strtotime($item->object->published));
+            $updated_at = date('Y/m/d H:i:s.v', strtotime($item->object->published));
             $in_reply_to_id = 'NULL';
             $reblog_of_id = 'NULL';
             $url = 'NULL';
-            $sensitive = (string)($item->object->sensitive);
+            $sensitive = $item->object->sensitive ? 'true' : 'false';
             $visibility = 1;
             $spoiler_text = '';
-            $reply = false;
+            $reply = 'false';
             $language = 'ja';
             $conversation_id++;
-            $local = true;
+            $local = 'true';
             
             $application_id = 'NULL';
             $in_reply_to_account_id = 'NULL';
@@ -111,19 +141,19 @@ class ConvertOutbox extends Command
 
             $body .= <<<__SQL_VALUES__
 VALUES (
-   {$timestamp},
-   "{$uri}",
-   "{$text}",
-   {$created_at},
-   {$updated_at},
+   timestamp_id('statuses'),
+   '{$uri}',
+   '{$text}',
+   '{$created_at}',
+   '{$updated_at}',
    {$in_reply_to_id},
    {$reblog_of_id},
-   "{$url}",
+   {$url},
    {$sensitive},
-   {$visibility}
-   {$spoiler_text},
+   {$visibility},
+   '{$spoiler_text}',
    {$reply},
-   "{$language}",
+   '{$language}',
    {$conversation_id},
    {$local},
    {$account_id},
@@ -138,7 +168,26 @@ __SQL_VALUES__;
         }
         
         Storage::put('sql/insert_status.sql', $body);
+    }
+    
+    /**
+     * build insert SQL for media_attachments table
+     */
+    private function buildSqlInsertMediaAttachments() {
         
-        return 0;
+    }
+
+    /**
+     * build insert SQL for status_tags table
+     */
+    private function buildSqlInsertStatusTags() {
+        
+    }
+
+    /**
+     * build insert SQL for tags table
+     */
+    private function buildSqlInsertTags() {
+        
     }
 }
