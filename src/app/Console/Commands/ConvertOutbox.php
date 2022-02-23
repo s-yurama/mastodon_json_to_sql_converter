@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ConvertOutbox extends Command
 {
+    const ACCOUNT_ID = '107821726044655681';
+    
     /**
      * The name and signature of the console command.
      *
@@ -21,6 +23,10 @@ class ConvertOutbox extends Command
      */
     protected $description = 'convert outbox.json to insert.sql';
 
+    protected $mediaAttachments = [];
+    protected $statusesTags = [];
+    protected $tags = [];
+    
     /**
      * Create a new command instance.
      *
@@ -49,8 +55,8 @@ class ConvertOutbox extends Command
 
         $this->buildSqlInsertStatus($jsonObject->orderedItems);
         $this->buildSqlInsertMediaAttachments();
-        $this->buildSqlInsertStatusTags();
         $this->buildSqlInsertTags();
+        $this->buildSqlInsertStatusesTags();
         
         return 0;
     }
@@ -86,7 +92,7 @@ class ConvertOutbox extends Command
             'edited_at',
         ];
         
-        $account_id = 'reserved_account_id_here';
+        $account_id = self::ACCOUNT_ID;
         $conversation_id = 0;
         
         foreach( $items as $item) {
@@ -99,17 +105,24 @@ class ConvertOutbox extends Command
             
             $uri = $item->object->id;
             $id = basename($item->object->id); // as ID column in posgresql db side
+            
             $text = html_entity_decode($item->object->content);
             $text = str_replace('&apos;', '\'', $text);
             $text = str_replace('<p>', '', $text);
             $text = str_replace('</p>', "\n", $text);
             $text = str_replace('<br />', "\n", $text);
             
+            // hash tag part recovery
+            $text = preg_replace('/<a href=\"https:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+\" class=\"mention hashtag\" rel=\"tag\">/u', '', $text);
+            $text = str_replace('#<span>', '#', $text);
+            
             // URL part recovery
             //$text = preg_replace("/(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)/u", '', $text);
             $text = str_replace('<a href="', ' ', $text);
             $text = str_replace('" rel="nofollow noopener" target="_blank">', '', $text);
-            $text = preg_replace('/<span class="invisible">https:\/\/<\/span><span class="">[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+<\/span><span class="invisible"><\/span><\/a>/u', ' ', $text);
+            $text = preg_replace('/<span class="invisible">https:\/\/[a-zA-Z0-9\-\.]*<\/span><span class="[a-zA-Z0-9]*">[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+<\/span><span class="invisible">[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]*<\/span><\/a>/u', ' ', $text);
+            
+            $text = str_replace('</span></a>', ' ', $text);
 
             // end of </p> will be converted to \n, then remove it.
             $text = preg_replace("/\n$/u", '', $text);
@@ -138,10 +151,56 @@ class ConvertOutbox extends Command
             $poll_id = 'NULL';
             $deleted_at = 'NULL';
             $edited_at = 'NULL';
+            
+            foreach($item->object->tag as $tag) {
+                $this->tags[] = [
+                    'status_id'           => $id,
+                    'name'                => preg_replace('/^#/u', '', $tag->name),
+                    'created_at'          => $created_at,
+                    'updated_at'          => $updated_at,
+                    'id'                  => 0,
+                    'usable'              => 'NULL',
+                    'trendable'           => 'NULL',
+                    'listable'            => 'NULL',
+                    'reviewed_at'         => 'NULL',
+                    'requested_review_at' => 'NULL',
+                    'last_status_at'      => 'NULL',
+                    'max_score'           => 'NULL',
+                    'max_score_at'        => 'NULL',
+                ];
+            }
+
+            foreach($item->object->attachment as $attachment) {
+                $this->mediaAttachments[] = [
+                    'status_id'                     => $id,
+                    'file_file_name'                => basename($attachment->url),
+                    'file_content_type'             => $attachment->mediaType,
+                    'file_file_size'                => null, // required to made manually.
+                    'file_updated_at'               => $created_at,
+                    'remote_url'                    => 'NULL',
+                    'created_at'                    => $created_at,
+                    'updated_at'                    => $created_at,
+                    'shortcode'                     => 'NULL',
+                    'type'                          => 0,
+                    'file_meta'                     => null, // required to made manually.
+                    'account_id'                    => $account_id,
+                    'id'                            => 'timestamp_id(\'media_attachments\')', // recreated
+                    'description'                   => '',
+                    'scheduled_status_id'           => 'NULL',
+                    'blurhash'                      => $attachment->blurhash,
+                    'processing'                    => 2,
+                    'file_storage_schema_version'   => 1,
+                    'thumbnail_file_name'           => 'NULL',
+                    'thumbnail_content_type'        => 'NULL',
+                    'thumbnail_file_size'           => 'NULL',
+                    'thumbnail_updated_at'          => 'NULL',
+                    'thumbnail_remote_url'          => 'NULL',
+                ];
+            }
 
             $body .= <<<__SQL_VALUES__
 VALUES (
-   timestamp_id('statuses'),
+   {$id},
    '{$uri}',
    '{$text}',
    '{$created_at}',
@@ -178,16 +237,119 @@ __SQL_VALUES__;
     }
 
     /**
-     * build insert SQL for status_tags table
-     */
-    private function buildSqlInsertStatusTags() {
-        
-    }
-
-    /**
      * build insert SQL for tags table
      */
     private function buildSqlInsertTags() {
+        $body = '';
+
+        $columnNames = [
+            'name',
+            'created_at',
+            'updated_at',
+            'id',
+            'usable',
+            'trendable',
+            'listable',
+            'reviewed_at',
+            'requested_review_at',
+            'last_status_at',
+            'max_score',
+            'max_score_at',
+        ];
         
+        $id = 0;
+        $existsNames = [];
+        foreach($this->tags as $tag) {
+            $isExistsAlready = false;
+            foreach($existsNames as $existsName){
+                 if ($existsName ===  $tag['name']) {
+                     $isExistsAlready = true;
+                     break;
+                 }
+            }
+            
+            if ($isExistsAlready) {
+                continue;
+            }
+            
+            $id++;
+            
+            $this->statusesTags[] = [
+                'status_id' => $tag['status_id'],
+                'tag_id' => $id,
+            ];
+            
+            $existsNames[] = $tag['name'];
+            
+            $body .= 'INSERT INTO tags';
+            $body .= "\n";
+            
+            $columns = '('. implode(', ', $columnNames). ') ';
+            $body.= $columns;   
+            $body .= "\n";
+            
+            $name = $tag['name'];
+            $created_at = $tag['created_at'];
+            $updated_at = $tag['created_at'];
+            //$id = $tag['id'];
+            $usable = $tag['usable'];
+            $trendable = $tag['trendable'];
+            $listable = $tag['listable'];
+            $reviewed_at = $tag['reviewed_at'];
+            $requested_review_at = $tag['requested_review_at'];
+            $last_status_at = $tag['last_status_at'];
+            $max_score = $tag['max_score'];
+            $max_score_at = $tag['max_score_at'];
+        
+            $body .= <<<__SQL_VALUES__
+VALUES (
+    '{$name}',
+    '{$created_at}',
+    '{$updated_at}',
+    {$id},
+    {$usable},
+    {$trendable},
+    {$listable},
+    {$reviewed_at},
+    {$requested_review_at},
+    {$last_status_at},
+    {$max_score},
+    {$max_score_at}
+);
+__SQL_VALUES__;
+            $body .= "\n\n";
+        }
+        
+        Storage::put('sql/insert_tags.sql', $body);
+    }
+
+    /**
+     * build insert SQL for status_tags table
+     */
+    private function buildSqlInsertStatusesTags() {
+        $body = '';
+
+        $columnNames = [
+            'status_id',
+            'tag_id',
+        ];
+        
+        foreach($this->statusesTags as $statusesTag) {               
+            $body .= 'INSERT INTO statuses_tags';
+            $body .= "\n";
+            
+            $columns = '('. implode(', ', $columnNames). ') ';
+            $body.= $columns;   
+            $body .= "\n";
+            $body .= <<<__SQL_VALUES__
+VALUES (
+    {$statusesTag['status_id']},
+    {$statusesTag['tag_id']}
+);
+__SQL_VALUES__;
+            $body .= "\n\n";
+        }
+        
+        Storage::put('sql/insert_statuses_tags.sql', $body);
     }
 }
