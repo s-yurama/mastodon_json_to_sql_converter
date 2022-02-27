@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ConvertOutbox extends Command
 {
-    const ACCOUNT_ID = '107821726044655681';
+    const ACCOUNT_ID = '1';
     
     /**
      * The name and signature of the console command.
@@ -89,7 +89,6 @@ class ConvertOutbox extends Command
             'in_reply_to_account_id',
             'poll_id',
             'deleted_at',
-            'edited_at',
         ];
         
         $account_id = self::ACCOUNT_ID;
@@ -175,17 +174,17 @@ class ConvertOutbox extends Command
                     'status_id'                     => $id,
                     'file_file_name'                => basename($attachment->url),
                     'file_content_type'             => $attachment->mediaType,
-                    'file_file_size'                => null, // required to made manually.
+                    'file_file_size'                => 'NULL', // required to made manually.
                     'file_updated_at'               => $created_at,
-                    'remote_url'                    => 'NULL',
+                    'remote_url'                    => '',
                     'created_at'                    => $created_at,
                     'updated_at'                    => $created_at,
                     'shortcode'                     => 'NULL',
                     'type'                          => 0,
-                    'file_meta'                     => null, // required to made manually.
+                    'file_meta'                     => 'NULL', // required to made manually.
                     'account_id'                    => $account_id,
                     'id'                            => 'timestamp_id(\'media_attachments\')', // recreated
-                    'description'                   => '',
+                    'description'                   => 'NULL',
                     'scheduled_status_id'           => 'NULL',
                     'blurhash'                      => $attachment->blurhash,
                     'processing'                    => 2,
@@ -194,7 +193,6 @@ class ConvertOutbox extends Command
                     'thumbnail_content_type'        => 'NULL',
                     'thumbnail_file_size'           => 'NULL',
                     'thumbnail_updated_at'          => 'NULL',
-                    'thumbnail_remote_url'          => 'NULL',
                 ];
             }
 
@@ -219,8 +217,7 @@ VALUES (
    {$application_id},
    {$in_reply_to_account_id},
    {$poll_id},
-   {$deleted_at},
-   {$edited_at}
+   {$deleted_at}
 );
 __SQL_VALUES__;
             $body .= "\n\n";
@@ -233,7 +230,71 @@ __SQL_VALUES__;
      * build insert SQL for media_attachments table
      */
     private function buildSqlInsertMediaAttachments() {
+        $body = '';
+
+        $columnNames = [
+            'status_id',
+            'file_file_name',
+            'file_content_type',
+            'file_file_size',
+            'file_updated_at',
+            'remote_url',
+            'created_at',
+            'updated_at',
+            'shortcode',
+            'type',
+            'file_meta',
+            'account_id',
+            'id',
+            'description',
+            'scheduled_status_id',
+            'blurhash',
+            'processing',
+            'file_storage_schema_version',
+            'thumbnail_file_name',
+            'thumbnail_content_type',
+            'thumbnail_file_size',
+            'thumbnail_updated_at',
+        ];
+
+        foreach($this->mediaAttachments as $mediaAttachment) {
+            $body .= 'INSERT INTO media_attachments';
+            $body .= "\n";
+            
+            $columns = '('. implode(', ', $columnNames). ') ';
+            $body.= $columns;   
+            $body .= "\n";
+            
+            $body .= <<<__SQL_VALUES__
+VALUES (
+    {$mediaAttachment['status_id']},
+    '{$mediaAttachment['file_file_name']}',
+    '{$mediaAttachment['file_content_type']}',
+    {$mediaAttachment['file_file_size']},
+    '{$mediaAttachment['file_updated_at']}',
+    '{$mediaAttachment['remote_url']}',
+    '{$mediaAttachment['created_at']}',
+    '{$mediaAttachment['updated_at']}',
+    {$mediaAttachment['shortcode']},
+    {$mediaAttachment['type']},
+    {$mediaAttachment['file_meta']},
+    {$mediaAttachment['account_id']},
+    {$mediaAttachment['id']},
+    {$mediaAttachment['description']},
+    {$mediaAttachment['scheduled_status_id']},
+    '{$mediaAttachment['blurhash']}',
+    {$mediaAttachment['processing']},
+    {$mediaAttachment['file_storage_schema_version']},
+    {$mediaAttachment['thumbnail_file_name']},
+    {$mediaAttachment['thumbnail_content_type']},
+    {$mediaAttachment['thumbnail_file_size']},
+    {$mediaAttachment['thumbnail_updated_at']}
+);
+__SQL_VALUES__;
+            $body .= "\n\n";
+        }
         
+        Storage::put('sql/insert_media_attachment.sql', $body);
     }
 
     /**
