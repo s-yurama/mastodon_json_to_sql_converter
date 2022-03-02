@@ -9,7 +9,7 @@
 <ul>
   <li>Mastodonに直接に操作を行うのではなく、単純にSQLファイルを生成します。</li>
   <li>コンテナにpostgreSQLを含有しておらず、SQLの文字列エスケープをちゃんとしていません。</li>
-  <li>media_attachments</li>はファイルの扱いまで対応していません。</li>
+  <li>media_attachmentsはファイルの扱いまで対応していません。</li>
   <li>GUIを持ちません。Laravelのコマンドラインから動作します。</li>
   <li>既にデータがある場合の追加レストアを想定していません。</li>
 </ul>
