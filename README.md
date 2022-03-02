@@ -1,3 +1,34 @@
+<h1
+  Mastodonのエクスポートで出力したoutbox.jsonからstatusesを復元するためのinsert文を生成するツールです。
+</h1
+
+<h2>
+  いくつかセキュリティ上のを含む致命的な問題を抱えているので、お持ち帰りの場合はご理解の上で。
+</h2>
+
+<ul>
+  <li>Mastodonに直接に操作を行うのではなく、単純にSQLファイルを生成します。</li>
+  <li>コンテナにpostgreSQLを含有しておらず、SQLの文字列エスケープをちゃんとしていません。</li>
+  <li>media_attachments</li>はファイルの扱いまで対応していません。</li>
+  <li>GUIを持ちません。Laravelのコマンドラインから動作します。</li>
+  <li>既にデータがある場合の追加レストアを想定していません。</li>
+</ul>
+
+<h2>
+  使い方
+</h2>
+
+<ul>
+  <li>任意のディレクトリにチェックアウトし、```docker```ディレクトリ内で、```docoker compose up```してください。</li>
+  <li>```./storage/app/json``` 下に、```outbox.json```を設置してください。</li>
+  <li>```docker exec -it docker_www_mjtsc_1 /bin/bash/```でコンテナに入ってください。</li>
+  <li>```cd /var/www/src/```でソースディレクトリに移動してください。</li>
+  <li>```php artisan convert:outbox```を実行してください。</li>
+  <li>```./storage/app/sql``` 下に、各種insert文が生成されます。</li>
+</ul>
+
+<hr>
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
 
 <p align="center">
