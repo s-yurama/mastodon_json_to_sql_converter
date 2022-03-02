@@ -54,6 +54,7 @@ RUN apt-get install --no-install-recommends -y apache2
 RUN apt-get install --no-install-recommends -y \
     php7.4 \
     php7.4-mysqli \
+    php7.4-pgsql \
     php7.4-phar \
     php7.4-mbstring \
     php7.4-ctype \
