@@ -19,12 +19,12 @@
 </h2>
 
 <ul>
-  <li>任意のディレクトリにチェックアウトし、```docker```ディレクトリ内で、```docoker compose up```してください。</li>
-  <li>```./storage/app/json``` 下に、```outbox.json```を設置してください。</li>
-  <li>```docker exec -it docker_www_mjtsc_1 /bin/bash/```でコンテナに入ってください。</li>
-  <li>```cd /var/www/src/```でソースディレクトリに移動してください。</li>
-  <li>```php artisan convert:outbox```を実行してください。</li>
-  <li>```./storage/app/sql``` 下に、各種insert文が生成されます。</li>
+  <li>任意のディレクトリにチェックアウトし、<code>docker</code>ディレクトリ内で、<code>docoker compose up</code>してください。</li>
+  <li><code>./storage/app/json</code>下に、<code>outbox.json</code>を設置してください。</li>
+  <li><code>docker exec -it docker_www_mjtsc_1 /bin/bash/</code>でコンテナに入ってください。</li>
+  <li><code>cd /var/www/src/</code>でソースディレクトリに移動してください。</li>
+  <li><code>php artisan convert:outbox</code>を実行してください。</li>
+  <li><code>./storage/app/sql</code>下に、各種insert文が生成されます。</li>
 </ul>
 
 <hr>
