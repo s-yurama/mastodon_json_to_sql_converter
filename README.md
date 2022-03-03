@@ -42,6 +42,12 @@
   <li><code>./storage/app/sql</code>下に、各種insert文が生成されます。</li>
 </ul>
 
+<p>
+  ※単にinsertしただけではタイムラインが見えない状態になります。<br>
+  redisのキャッシュ削除（影響を考えなくていいなら、<code>redis-cli flushdb</code>で）を行い、<br>
+  <code>RAILS_ENV=production bundle exec bin/tootctl feeds build --all</code>でフィードの再構成を行ってください。
+</p>
+
 <h2>
    その他
 </h2>
