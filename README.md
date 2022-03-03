@@ -1,17 +1,24 @@
-<h1
-  Mastodonのエクスポートで出力したoutbox.jsonからstatusesを復元するためのinsert文を生成するツールです。
-</h1
+<h1>
+  概要
+</h1>
+
+<p>
+  Mastodonのエクスポートで出力したoutbox.jsonから投稿本文などのstatusesなどを復元するためのinsert文を生成するツールです。
+  返信やブースト、メディアには対応しておらず、壊れたおひとり様マストドンを雑に救出する程度のツールです。
+</p>
 
 <h2>
-  いくつかセキュリティ上のを含む致命的な問題を抱えているので、お持ち帰りの場合はご理解の上で。
+  注意点
 </h2>
 
+<p>いくつかセキュリティ上のを含む致命的な問題を抱えているので、お持ち帰りの場合はご理解の上で。</p>
 <ul>
   <li>Mastodonに直接に操作を行うのではなく、単純にSQLファイルを生成します。</li>
-  <li>コンテナにpostgreSQLを含有しておらず、SQLの文字列エスケープをちゃんとしていません。</li>
+  <li>コンテナにpostgreSQLを含有しておらず標準の関数によるSQLの文字列エスケープをちゃんとしていません。このため、投稿本文からインジェクションが発生する可能性があるかもしれません。</li>
   <li>media_attachmentsはファイルの扱いまで対応していません。</li>
   <li>GUIを持ちません。Laravelのコマンドラインから動作します。</li>
   <li>既にデータがある場合の追加レストアを想定していません。</li>
+  <li>リプライやブーストなどの対応をしていません。</li>
 </ul>
 
 <h2>
@@ -19,7 +26,10 @@
 </h2>
 
 <ul>
-  <li>任意のディレクトリにチェックアウトし、<code>docker</code>ディレクトリ内で、<code>docoker compose up</code>してください。</li>
+  <li>先に、導入先のマストドンでユーザーだけ作成し、ユーザーIDを控えておいてください。<br/>※サーバー上でpsqlコマンドでDBに入って<code>select * from accounts</code>するなどで確認してください。</li>
+  <li>任意のディレクトリに<code>git clone</code>してください。</li>
+  <li><code>./src/app/Console/Commands/ConvertOutbox.php</code>内の<code>const ACCOUNT_ID</code>を作成済みのユーザーIDに書き換えます。</li>
+  <li><code>docker</code>ディレクトリ内で、<code>docoker compose up</code>してください。</li>
   <li><code>./storage/app/json</code>下に、<code>outbox.json</code>を設置してください。</li>
   <li><code>docker exec -it docker_www_mjtsc_1 /bin/bash/</code>でコンテナに入ってください。</li>
   <li><code>cd /var/www/src/</code>でソースディレクトリに移動してください。</li>
@@ -27,6 +37,14 @@
   <li><code>./storage/app/sql</code>下に、各種insert文が生成されます。</li>
 </ul>
 
+<h2>
+   その他
+</h2>
+
+<p>
+  実装は下記にあります。
+  <code>./src/app/Console/Commands/ConvertOutbox.php</code>
+</p>
 <hr>
 
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
